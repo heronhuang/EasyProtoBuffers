@@ -8,6 +8,35 @@ namespace Warkits.ToolBox.EasyProto
 { 
     public class EasyProtoCore
     {
+       
+            // 这个特性确保函数在Unity启动或代码重编译后自动运行
+        [InitializeOnLoadMethod]
+        private static void OnPluginLoaded()
+        {
+            // 为了避免每次代码编译都重复执行，可以添加简单的判断逻辑
+            // 例如：检测是否已经执行过，或仅在新安装后的前几秒执行
+            //if (EditorApplication.timeSinceStartup < 30)
+            {
+                string projectRoot     = Application.dataPath + "/../";
+                string scriptPath      = GetCurrentScriptPath();
+                string scriptDirectory = projectRoot + Path.GetDirectoryName(scriptPath);
+                string platformFolder  = DetectPlatform();
+                string includePath     = Path.Combine(scriptDirectory , "protoc");
+                string protocPath      = Path.Combine(includePath     , platformFolder);
+#if UNITY_EDITOR_WIN
+                string protocLocate    = Path.Combine( protocPath,     "protoc.exe");
+#else
+                string protocLocate    = Path.Combine( protocPath,     "protoc");
+#endif
+ 
+                if ( !File.Exists(protocLocate) )
+                {
+                    string url  = "https://github.com/protocolbuffers/protobuf/releases/download/v34.1/protoc-34.1-"; 
+                    EasyDownloader.Fetch( url, protocPath );  
+                }
+            }
+        } 
+        
         [MenuItem("Tools/EasyProto/Compile All Protos")]
         public static void ManualCompileAllProtos()
         {

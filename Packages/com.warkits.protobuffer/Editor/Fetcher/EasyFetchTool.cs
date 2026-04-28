@@ -56,9 +56,11 @@ namespace Warkits.ToolBox.EasyProto
         Button confirmBtn;
 
         bool isDownloading = false;
-
+        private static bool opened = false;
         public static void Open(string[] urls, string targetPath, string platform)
         {
+            if (opened) return;
+            opened = true;
             var wnd = CreateInstance<EasyFetchWindow>();
             wnd.titleContent = new GUIContent("Easy Proto Downloader");
             wnd.urls = urls;
@@ -67,6 +69,7 @@ namespace Warkits.ToolBox.EasyProto
             wnd.minSize = new Vector2(480, 200);
             wnd.ShowUtility();
             wnd.Init();
+           
         }
 
         void Init()
@@ -132,7 +135,10 @@ namespace Warkits.ToolBox.EasyProto
             confirmBtn = new Button(StartDownload) { text = "确认" };
             var cancelBtn = new Button(() =>
             {
-                if (!isDownloading) Close();
+                if (!isDownloading)
+                {
+                    Close();    opened = false;
+                }
             }) { text = "取消" };
 
             btnRow.Add(confirmBtn);
@@ -189,6 +195,7 @@ namespace Warkits.ToolBox.EasyProto
                 {
                     Debug.LogError("All downloads failed");
                     Close();
+                    opened = false;
                     return;
                 }
 
@@ -199,12 +206,12 @@ namespace Warkits.ToolBox.EasyProto
                 File.Delete(zipPath);
 
                 Debug.Log("EasyFetch Done");
-                Close();
+                Close(); opened = false;
             }
             catch (Exception e)
             {
                 Debug.LogError(e);
-                Close();
+                Close();opened = false;
             }
         }
 
