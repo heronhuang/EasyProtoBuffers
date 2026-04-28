@@ -61,8 +61,7 @@ namespace Warkits.ToolBox.EasyProto
             if (File.Exists(ignoreTag)) 
             {
                 return;
-            }
-
+            } 
             // 获取必要的路径信息
             string projectRoot     = Application.dataPath + "/../";
             string scriptPath      = GetCurrentScriptPath();
@@ -80,56 +79,49 @@ namespace Warkits.ToolBox.EasyProto
             string fileName        = Path.GetFileNameWithoutExtension(protPath);
 
             // 验证protoc是否存在
-            if (!File.Exists(protocLocate))
+            if ( !File.Exists(protocLocate) )
             {
-                string url  = "https://github.com/protocolbuffers/protobuf/releases/download/v34.1/protoc-34.1-";
-                //string path =  Application.dataPath + "/MyFolder"; 
-                EasyDownloader.Fetch( url, protocPath ); 
-                //Debug.LogError($"[ProtoImporter] protoc工具不存在: {protocPath}");
-                //return;
+                string url  = "https://github.com/protocolbuffers/protobuf/releases/download/v34.1/protoc-34.1-"; 
+                EasyDownloader.Fetch( url, protocPath );  
             }
-
-            if (!File.Exists(protocLocate))
+            else
             {
-                Debug.LogError($"[ProtoImporter] protoc工具不存在: {protocPath}");
-                return;
-            }
-            // 验证.proto文件是否存在
-            if (!File.Exists(fullPath))
-            {
-                Debug.LogWarning($"[ProtoImporter] .proto文件不存在: {fullPath}");
-                return;
-            }
-
-            // 执行protoc命令
-            System.Diagnostics.ProcessStartInfo procInfo = new System.Diagnostics.ProcessStartInfo
-            {
-                FileName               = protocLocate,
-                Arguments              = $"--proto_path=\"{includePath}\" --proto_path=\"{workingPath}\" --csharp_out=\"{workingPath}\" \"{fullPath}\"",
-                WorkingDirectory       = workingPath,
-                UseShellExecute        = false,
-                CreateNoWindow         = true,
-                RedirectStandardOutput = true,
-                RedirectStandardError  = true
-            };
-
-            using (var process = System.Diagnostics.Process.Start(procInfo))
-            {
-                process.WaitForExit();
-
-                if (process.ExitCode == 0)
+                // 验证.proto文件是否存在
+                if (!File.Exists(fullPath))
                 {
-                    Debug.LogFormat("-><color=green>[ProtoImporter] {0}.proto 解析成功</color>", fileName);
+                    Debug.LogWarning($"[ProtoImporter] .proto文件不存在: {fullPath}");
+                    return;
+                } 
+                // 执行protoc命令
+                System.Diagnostics.ProcessStartInfo procInfo = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName               = protocLocate,
+                    Arguments              = $"--proto_path=\"{includePath}\" --proto_path=\"{workingPath}\" --csharp_out=\"{workingPath}\" \"{fullPath}\"",
+                    WorkingDirectory       = workingPath,
+                    UseShellExecute        = false,
+                    CreateNoWindow         = true,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError  = true
+                };
+
+                using (var process = System.Diagnostics.Process.Start(procInfo))
+                {
+                    process.WaitForExit();
+
+                    if (process.ExitCode == 0)
+                    {
+                        Debug.LogFormat("-><color=green>[ProtoImporter] {0}.proto 解析成功</color>", fileName);
                     
-                    // 刷新Asset数据库，但批量执行以提高性能
-                    EditorApplication.delayCall += () => AssetDatabase.Refresh(ImportAssetOptions.Default);
+                        // 刷新Asset数据库，但批量执行以提高性能
+                        EditorApplication.delayCall += () => AssetDatabase.Refresh(ImportAssetOptions.Default);
+                    }
+                    else
+                    {
+                        string errorOutput = process.StandardError.ReadToEnd();
+                        Debug.LogErrorFormat("-><color=#800000ff>[ProtoImporter] {0}.proto 解析失败: {1}</color>", fileName, errorOutput);
+                    }
                 }
-                else
-                {
-                    string errorOutput = process.StandardError.ReadToEnd();
-                    Debug.LogErrorFormat("-><color=#800000ff>[ProtoImporter] {0}.proto 解析失败: {1}</color>", fileName, errorOutput);
-                }
-            }
+            } 
         }
 
         private static string GetCurrentScriptPath()
