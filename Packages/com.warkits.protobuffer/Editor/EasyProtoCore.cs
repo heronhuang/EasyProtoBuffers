@@ -13,9 +13,10 @@ namespace Warkits.ToolBox.EasyProto
         [InitializeOnLoadMethod]
         private static void OnPluginLoaded()
         {
+           
             // 为了避免每次代码编译都重复执行，可以添加简单的判断逻辑
             // 例如：检测是否已经执行过，或仅在新安装后的前几秒执行
-            //if (EditorApplication.timeSinceStartup < 30)
+            if (!SessionState.GetBool("ProtocDetected", false))
             {
                 string projectRoot     = Application.dataPath + "/../";
                 string scriptPath      = GetCurrentScriptPath();
@@ -34,6 +35,7 @@ namespace Warkits.ToolBox.EasyProto
                     string url  = "https://github.com/protocolbuffers/protobuf/releases/download/v34.1/protoc-34.1-"; 
                     EasyDownloader.Fetch( url, protocPath );  
                 }
+                SessionState.SetBool("ProtocDetected", true);
             }
         } 
         
