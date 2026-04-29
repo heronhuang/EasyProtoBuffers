@@ -15,10 +15,10 @@ namespace Warkits.ToolBox.EasyProto
     { 
         public static void Fetch(string url, string targetPath)
         {
-            string platform = EasyProtoCore.DetectPlatform();
+            string platform    = EasyProtoCore.DetectPlatform();
             string finalTarget = targetPath;
             //string finalTarget = Path.Combine(targetPath, platform);
-            string baseUrl = url + platform + ".zip";
+            string baseUrl     = url + platform + ".zip";
 
             string[] urls = BuildUrlFallbacks(baseUrl);
 
@@ -60,14 +60,14 @@ namespace Warkits.ToolBox.EasyProto
         public static void Open(string[] urls, string targetPath, string platform)
         {
             if (opened) return;
-            opened = true;
-            var wnd = CreateInstance<EasyFetchWindow>();
-            wnd.titleContent = new GUIContent("Easy Proto Downloader");
-            wnd.urls = urls;
-            wnd.targetPath = targetPath;
-            wnd.platform = platform;
-            wnd.minSize = new Vector2(480, 200);
-            wnd.maxSize = new Vector2(480, 300); // 👉 固定高度
+            opened           = true;
+            var wnd          = CreateInstance<EasyFetchWindow>();
+            wnd.titleContent = new GUIContent("Easy ProtoBuffer Downloader");
+            wnd.urls         = urls;
+            wnd.targetPath   = targetPath;
+            wnd.platform     = platform;
+            wnd.minSize      = new Vector2(480  , 200);
+            wnd.maxSize      = new Vector2(480  , 300);  
             wnd.ShowUtility();
             wnd.Init();
            

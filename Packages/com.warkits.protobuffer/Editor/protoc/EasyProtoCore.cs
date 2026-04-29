@@ -32,7 +32,7 @@ namespace Warkits.ToolBox.EasyProto
             string scriptPath      = GetCurrentScriptPath();
             string scriptDirectory = projectRoot + Path.GetDirectoryName(scriptPath);
             string platformFolder  = DetectPlatform();
-            string includePath     = scriptPath;
+            string includePath     = scriptDirectory;
             string protocPath      = Path.Combine( includePath     , ".bin" );
             protocPath             = Path.Combine( protocPath       , platformFolder );
 #if UNITY_EDITOR_WIN
