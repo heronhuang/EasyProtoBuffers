@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using JetBrains.Annotations;
 using UnityEngine;
 using UnityEditor;
 
@@ -80,7 +81,7 @@ namespace Warkits.ToolBox.EasyProto
             {
                 try
                 {
-                    CompileProtoFile(protPath);
+                    CompileProtoFile(protPath,null,null);
                 }
                 catch (Exception ex)
                 {
@@ -89,17 +90,15 @@ namespace Warkits.ToolBox.EasyProto
             };
         }
 
-        public  static void CompileProtoFile(string protPath)
+        public  static void CompileProtoFile( string protPath,List<string> includes,[CanBeNull] string target )
         {
-            // 检查是否已被忽略
             string itemFolderPath = Path.GetDirectoryName(Path.GetFullPath(Application.dataPath + "/../" + protPath));
+            //.ignore exists current directory,all files in this folder will be ignored
             string ignoreTag      = Path.Combine( itemFolderPath  , ".ignore" );
-            
             if (File.Exists(ignoreTag)) 
             {
                 return;
             } 
-  
             (string includePath,string protocPath, string protocLocate) = GetProtoCompilerFolder();
 
             // 验证protoc是否存在
@@ -138,7 +137,7 @@ namespace Warkits.ToolBox.EasyProto
 
                     if (process.ExitCode == 0)
                     {
-                        Debug.LogFormat("-><color=green>[ProtoImporter] {0}.proto 解析成功</color>", fileName);
+                        Debug.LogFormat("-><color=green>[East ProtoBuffer] {0}.proto Compile Successes!</color>", fileName);
                     
                         // 刷新Asset数据库，但批量执行以提高性能
                         EditorApplication.delayCall += () => AssetDatabase.Refresh(ImportAssetOptions.Default);
@@ -146,7 +145,7 @@ namespace Warkits.ToolBox.EasyProto
                     else
                     {
                         string errorOutput = process.StandardError.ReadToEnd();
-                        Debug.LogErrorFormat("-><color=#800000ff>[ProtoImporter] {0}.proto 解析失败: {1}</color>", fileName, errorOutput);
+                        Debug.LogErrorFormat("-><color=#800000ff>[East ProtoBuffer] {0}.proto Failed to Compile !: {1}</color>", fileName, errorOutput);
                     }
                 }
             } 
