@@ -72,7 +72,23 @@ namespace Warkits.ToolBox.EasyProto
             wnd.Init();
            
         }
+        void OnEnable()
+        {
+            EditorApplication.update += OnEditorUpdate;
+        }
 
+        void OnDisable()
+        {
+            EditorApplication.update -= OnEditorUpdate;
+        }
+
+        void OnEditorUpdate()
+        {
+            if (isDownloading)
+            {
+                Repaint(); // 👉 强制刷新UI（关键）
+            }
+        }
         void Init()
         {
             var root = rootVisualElement;

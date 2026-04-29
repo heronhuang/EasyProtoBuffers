@@ -14,18 +14,8 @@ namespace Warkits.ToolBox.EasyProto
         {
             if (!SessionState.GetBool("ProtocDetected", false))
             {
-                string projectRoot     = Application.dataPath + "/../";
-                string scriptPath      = GetCurrentScriptPath();
-                string scriptDirectory = projectRoot + Path.GetDirectoryName(scriptPath);
-                string platformFolder  = DetectPlatform();
-                string includePath     = Path.Combine(scriptDirectory , "protoc");
-                string protocPath      = Path.Combine(includePath     , platformFolder);
-#if UNITY_EDITOR_WIN
-                string protocLocate    = Path.Combine( protocPath,     "protoc.exe");
-#else
-                string protocLocate    = Path.Combine( protocPath,     "protoc");
-#endif
- 
+                (_,string protocPath, string protocLocate) = GetProtoCompilerFolder();
+                
                 if ( !File.Exists(protocLocate) )
                 {
                     string url  = "https://github.com/protocolbuffers/protobuf/releases/download/v34.1/protoc-34.1-"; 
@@ -33,7 +23,27 @@ namespace Warkits.ToolBox.EasyProto
                 }
                 SessionState.SetBool("ProtocDetected", true);
             }
-        } 
+        }
+
+        //protoc folder,protoc full path
+        static (string,string,string) GetProtoCompilerFolder()
+        {
+            string projectRoot     = Application.dataPath + "/../";
+            string scriptPath      = GetCurrentScriptPath();
+            string scriptDirectory = projectRoot + Path.GetDirectoryName(scriptPath);
+            string platformFolder  = DetectPlatform();
+            string includePath     = scriptPath;
+            string protocPath      = Path.Combine( includePath     , ".bin" );
+            protocPath             = Path.Combine( protocPath       , platformFolder );
+#if UNITY_EDITOR_WIN
+            string protocLocate    = Path.Combine( protocPath,     "protoc.exe");
+#else
+           string protocLocate    = Path.Combine( protocPath,     "protoc");
+#endif
+            return (includePath, protocPath, protocLocate);
+        }
+        
+        
         
         [MenuItem("Tools/EasyProto/Compile All Protos")]
         public static void ManualCompileAllProtos()
@@ -89,21 +99,8 @@ namespace Warkits.ToolBox.EasyProto
             {
                 return;
             } 
-            // 获取必要的路径信息
-            string projectRoot     = Application.dataPath + "/../";
-            string scriptPath      = GetCurrentScriptPath();
-            string scriptDirectory = projectRoot + Path.GetDirectoryName(scriptPath);
-            string platformFolder  = DetectPlatform();
-            string includePath     = Path.Combine(scriptDirectory , "protoc");
-            string protocPath      = Path.Combine(includePath     , platformFolder);
-#if UNITY_EDITOR_WIN
-            string protocLocate    = Path.Combine( protocPath,     "protoc.exe");
-#else
-            string protocLocate    = Path.Combine( protocPath,     "protoc");
-#endif
-            string fullPath        = Path.GetFullPath(Path.Combine(projectRoot  , protPath));
-            string workingPath     = Path.GetDirectoryName(fullPath);
-            string fileName        = Path.GetFileNameWithoutExtension(protPath);
+  
+            (string includePath,string protocPath, string protocLocate) = GetProtoCompilerFolder();
 
             // 验证protoc是否存在
             if ( !File.Exists(protocLocate) )
@@ -113,6 +110,10 @@ namespace Warkits.ToolBox.EasyProto
             }
             else
             {
+                string projectRoot     = Application.dataPath + "/../"; 
+                string fullPath        = Path.GetFullPath(Path.Combine(projectRoot  , protPath));
+                string workingPath     = Path.GetDirectoryName(fullPath);
+                string fileName        = Path.GetFileNameWithoutExtension(protPath);
                 // 验证.proto文件是否存在
                 if (!File.Exists(fullPath))
                 {
@@ -154,8 +155,8 @@ namespace Warkits.ToolBox.EasyProto
         private static string GetCurrentScriptPath()
         {
             var stackTrace = new System.Diagnostics.StackTrace(true);
-            var frame = stackTrace.GetFrame(0);
-            var filePath = frame.GetFileName();
+            var frame      = stackTrace.GetFrame(0);
+            var filePath   = frame.GetFileName();
             return filePath;
         }
         public  static string DetectPlatform()
@@ -174,45 +175,6 @@ namespace Warkits.ToolBox.EasyProto
         return "win64";
 #endif
         }
-        // private static string GetEditorPlatformFolder()
-        // {
-        //     RuntimePlatform platform = Application.platform;
-        //     bool is64Bit = Environment.Is64BitProcess;
-        //
-        //     switch (platform)
-        //     {
-        //         case RuntimePlatform.WindowsEditor:
-        //             return is64Bit ? "windows_x64" : "windows_x86";
-        //         case RuntimePlatform.OSXEditor:
-        //             return "macosx";
-        //         case RuntimePlatform.LinuxEditor:
-        //             if (!is64Bit)
-        //                 return "linux_x86";
-        //             
-        //             if (IsArm64Architecture())
-        //                 return "linux_aarch64";
-        //             else
-        //                 return "linux_x64";
-        //         default:
-        //             return "unknown";
-        //     }
-        // }
-
-        private static bool IsArm64Architecture()
-        {
-            try
-            {
-                var arch = Environment.GetEnvironmentVariable("PROCESSOR_ARCHITECTURE");
-                if (string.IsNullOrEmpty(arch))
-                    return false;
-
-                arch = arch.ToLower();
-                return arch.Contains("arm64") || arch.Contains("aarch64");
-            }
-            catch
-            {
-                return false;
-            }
-        }
+     
     }
 }
