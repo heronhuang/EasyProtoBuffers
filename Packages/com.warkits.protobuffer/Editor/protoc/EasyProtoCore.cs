@@ -7,15 +7,11 @@ using UnityEditor;
 namespace Warkits.ToolBox.EasyProto
 { 
     public class EasyProtoCore
-    {
-       
-            // 这个特性确保函数在Unity启动或代码重编译后自动运行
+    { 
+        //auto execute on plugin loaded
         [InitializeOnLoadMethod]
         private static void OnPluginLoaded()
         {
-           
-            // 为了避免每次代码编译都重复执行，可以添加简单的判断逻辑
-            // 例如：检测是否已经执行过，或仅在新安装后的前几秒执行
             if (!SessionState.GetBool("ProtocDetected", false))
             {
                 string projectRoot     = Application.dataPath + "/../";

@@ -67,6 +67,7 @@ namespace Warkits.ToolBox.EasyProto
             wnd.targetPath = targetPath;
             wnd.platform = platform;
             wnd.minSize = new Vector2(480, 200);
+            wnd.maxSize = new Vector2(480, 300); // 👉 固定高度
             wnd.ShowUtility();
             wnd.Init();
            

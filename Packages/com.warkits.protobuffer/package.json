@@ -1,16 +1,14 @@
 {
   "name": "com.warkits.protobuffer",
   "version": "1.0.0",
-  "displayName": "Easy Protocol Buffers",
+  "displayName": "Easy ProtoBuffer",
   "description": "Protocol Buffers for Unity",
   "unity": "2022.3",
   "unityRelease": "0f1",
   "author": {
     "name": "Heron Huang",
-    "email": "tigerfudo@gmail.com",
-    "url": ""
+    "email": "tigerfudo@gmail.com"
   },
-  "documentationUrl": "",
   "samples": [
     {
       "displayName": "Easy Protocol Buffers Samples",
@@ -18,7 +16,7 @@
       "path": "Samples~/Samples"
     }
   ],
-  "dependencies": { 
+  "dependencies": {
     "com.unity.collections": "2.6.6"
   }
 }
