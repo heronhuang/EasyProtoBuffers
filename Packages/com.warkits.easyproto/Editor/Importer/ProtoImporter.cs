@@ -19,7 +19,7 @@ namespace Warkits.ToolBox.EasyProto
             var assetText  = new TextAsset(content);
             ctx.AddObjectToAsset("main obj", assetText);
             ctx.SetMainObject(assetText);  
-            EasyProtoCore.CompileProtoFile( ctx.assetPath, m_TargetPath ); 
+            EasyProtoModule.CompileProtoFile( ctx.assetPath, m_TargetPath ); 
         }
     }    
 }

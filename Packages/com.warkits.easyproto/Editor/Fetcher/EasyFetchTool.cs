@@ -15,7 +15,7 @@ namespace Warkits.ToolBox.EasyProto
     { 
         public static void Fetch(string url, string targetPath)
         {
-            string platform    = EasyProtoCore.DetectPlatform();
+            string platform    = EasyProtoModule.DetectPlatform();
             string finalTarget = targetPath;
             //string finalTarget = Path.Combine(targetPath, platform);
             string baseUrl     = url + platform + ".zip";
@@ -86,7 +86,7 @@ namespace Warkits.ToolBox.EasyProto
         {
             if (isDownloading)
             {
-                Repaint(); // 👉 强制刷新UI（关键）
+                Repaint(); 
             }
         }
         void Init()
@@ -98,7 +98,7 @@ namespace Warkits.ToolBox.EasyProto
             root.style.paddingRight = 12;
             root.style.paddingTop = 12;
 
-            root.Add(new Label("Easy Proto需要从Github下载")
+            root.Add(new Label("Easy Proto needs to download from Github")
             {
                 style =
                 {
@@ -115,28 +115,28 @@ namespace Warkits.ToolBox.EasyProto
                 style = { fontSize = 10, marginBottom = 10 }
             });
 
-            // ===== 渐变进度条 =====
-            var progressBg = new VisualElement();
-            progressBg.style.height = 18;
-            progressBg.style.backgroundColor = new Color(0.2f, 0.2f, 0.2f);
+          
+            var progressBg                   = new VisualElement();
+            progressBg.style.height          = 18;
+            progressBg.style.backgroundColor = new Color(0.2f      , 0.2f, 0.2f);
             //progressBg.style.borderr = 6;
-            progressBg.style.overflow = Overflow.Hidden;
-            progressBg.style.flexGrow = 1;
+            progressBg.style.overflow        = Overflow.Hidden;
+            progressBg.style.flexGrow        = 1;
 
-            progressFill = new VisualElement();
+            progressFill              = new VisualElement();
             progressFill.style.height = 18;
-            progressFill.style.width = 0;
+            progressFill.style.width  = 0;
             progressFill.style.backgroundImage = new StyleBackground(CreateGradient());
 
             progressBg.Add(progressFill);
 
-            var row = new VisualElement();
+            var row                 = new VisualElement();
             row.style.flexDirection = FlexDirection.Row;
-            row.style.alignItems = Align.Center;
+            row.style.alignItems    = Align.Center;
 
-            speedLabel = new Label("0 MB/s");
+            speedLabel                  = new Label("0 MB/s");
             speedLabel.style.marginLeft = 8;
-            speedLabel.style.minWidth = 80;
+            speedLabel.style.minWidth   = 80;
 
             row.Add(progressBg);
             row.Add(speedLabel);
@@ -225,7 +225,7 @@ namespace Warkits.ToolBox.EasyProto
                 Debug.Log("EasyFetch Done");
                 Close(); opened = false;
                 
-                EasyProtoCore.ManualCompileAllProtos();
+                EasyProtoModule.ManualCompileAllProtos();
             }
             catch (Exception e)
             {

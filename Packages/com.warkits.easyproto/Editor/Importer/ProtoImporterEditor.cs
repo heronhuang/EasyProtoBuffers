@@ -18,7 +18,7 @@ namespace Warkits.ToolBox.EasyProto
             if (GUILayout.Button("Compile"))
             {
                 var proto_asset = serializedObject.targetObject as ProtoImporter;
-                EasyProtoCore.CompileProtoFile( proto_asset.assetPath,proto_asset.m_TargetPath ); 
+                EasyProtoModule.CompileProtoFile( proto_asset.assetPath,proto_asset.m_TargetPath ); 
             }
             EditorGUILayout.Space();
             EditorGUILayout.EndHorizontal();
