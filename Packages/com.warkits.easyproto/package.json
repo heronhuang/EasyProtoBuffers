@@ -11,12 +11,9 @@
   },
   "samples": [
     {
-      "displayName": "Easy Protocol Buffers Samples",
-      "description": "",
+      "displayName": "Easy ProtoBuffer Samples",
+      "description": "Protobuf Serialization & Deserialization",
       "path": "Samples~/Samples"
     }
-  ],
-  "dependencies": {
-    "com.unity.collections": "2.6.6"
-  }
+  ]
 }

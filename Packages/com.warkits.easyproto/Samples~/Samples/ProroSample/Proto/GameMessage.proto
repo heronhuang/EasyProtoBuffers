@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+//Player Info
+message PlayerInfo {
+    int32 id = 1;
+    string name = 2;
+    int32 level = 3;
+    float hp = 4;
+}
+
+//Chat Message
+message ChatMessage {
+    string sender = 1;
+    string content = 2;
+}
