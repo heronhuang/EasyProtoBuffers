@@ -1,0 +1,6 @@
+syntax = "proto3";
+package EasyProto.Sample; 
+message TextMessage
+{
+  string Value  = 1;
+}

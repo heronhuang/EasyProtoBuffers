@@ -143,20 +143,20 @@ namespace Warkits.ToolBox.EasyProto
 
             root.Add(row);
 
-            // ===== 按钮 =====
+            // ===== Button =====
             var btnRow = new VisualElement();
-            btnRow.style.flexDirection = FlexDirection.Row;
+            btnRow.style.flexDirection  = FlexDirection.Row;
             btnRow.style.justifyContent = Justify.FlexEnd;
-            btnRow.style.marginTop = 12;
+            btnRow.style.marginTop      = 12;
 
-            confirmBtn = new Button(StartDownload) { text = "确认" };
+            confirmBtn    = new Button(StartDownload) { text = "Download" };
             var cancelBtn = new Button(() =>
             {
                 if (!isDownloading)
                 {
                     Close();    opened = false;
                 }
-            }) { text = "取消" };
+            }) { text = "Cancel" };
 
             btnRow.Add(confirmBtn);
             btnRow.Add(cancelBtn);
@@ -224,6 +224,8 @@ namespace Warkits.ToolBox.EasyProto
 
                 Debug.Log("EasyFetch Done");
                 Close(); opened = false;
+                
+                EasyProtoCore.ManualCompileAllProtos();
             }
             catch (Exception e)
             {

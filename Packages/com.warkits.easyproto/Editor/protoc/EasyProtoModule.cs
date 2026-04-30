@@ -11,7 +11,7 @@ namespace Warkits.ToolBox.EasyProto
         [InitializeOnLoadMethod]
         private static void OnPluginLoaded()
         {
-            if (!SessionState.GetBool("ProtocDetected", false))
+           // if (!SessionState.GetBool("ProtocDetected", false))
             {
                 (_,string protocPath, string protocLocate) = GetProtoCompilerFolder();
                 
@@ -20,11 +20,11 @@ namespace Warkits.ToolBox.EasyProto
                     string url  = "https://github.com/protocolbuffers/protobuf/releases/download/v34.1/protoc-34.1-"; 
                     EasyDownloader.Fetch( url, protocPath );  
                 }
-                SessionState.SetBool("ProtocDetected", true);
+            //    SessionState.SetBool("ProtocDetected", true);
             }
         }
 
-        //protoc folder,protoc full path
+        //inc folder, protoc folder,protoc full path
         static (string,string,string) GetProtoCompilerFolder()
         {
             string projectRoot     = Application.dataPath + "/../";
@@ -32,12 +32,12 @@ namespace Warkits.ToolBox.EasyProto
             string scriptDirectory = projectRoot + Path.GetDirectoryName(scriptPath);
             string platformFolder  = DetectPlatform();
             string includePath     = scriptDirectory;
-            string protocPath      = Path.Combine( includePath     , ".bin" );
-            protocPath             = Path.Combine( protocPath       , platformFolder );
+            string protocPath      = Path.Combine( includePath ,".bin" );
+            protocPath             = Path.Combine( protocPath  ,platformFolder );
 #if UNITY_EDITOR_WIN
-            string protocLocate    = Path.Combine( protocPath,     "protoc.exe");
+            string protocLocate    = Path.Combine( protocPath  ,"protoc.exe");
 #else
-           string protocLocate    = Path.Combine( protocPath,     "protoc");
+           string protocLocate    = Path.Combine( protocPath   ,"protoc");
 #endif
             return (includePath, protocPath, protocLocate);
         }
@@ -60,14 +60,11 @@ namespace Warkits.ToolBox.EasyProto
             foreach (string filePath in protoFiles)
             {
                 // 把系统路径转为 Unity 可识别的 Asset 路径（关键！）
-                string assetPath = filePath.Replace(assetsPath, "Assets");
-            
+                string assetPath = filePath.Replace(assetsPath, "Assets"); 
                 // 强制重新导入 → 自动触发你的 CustomImporter
-                AssetDatabase.ImportAsset(assetPath, ImportAssetOptions.ForceUpdate);
-            
+                AssetDatabase.ImportAsset(assetPath, ImportAssetOptions.ForceUpdate); 
                 count++;
-            }
-
+            } 
             // 提示完成
             EditorUtility.DisplayDialog("Success", 
                 $"重新导入完成！\n共处理 {count} 个 .proto 文件", "OK");
@@ -76,6 +73,7 @@ namespace Warkits.ToolBox.EasyProto
         public  static void CompileProtoFile( string protPath,  string target )
         {
             string itemFolderPath = Path.GetDirectoryName(Path.GetFullPath(Application.dataPath + "/../" + protPath));
+            if (target == null) target = "";
             //.ignore exists current directory,all files in this folder will be ignored
             string ignoreTag      = Path.Combine( itemFolderPath  , ".ignore" );
             if (File.Exists(ignoreTag)) 
@@ -96,7 +94,7 @@ namespace Warkits.ToolBox.EasyProto
                 string fullPath        = Path.GetFullPath(Path.Combine(projectRoot  , protPath));
                 string workingPath     = Path.GetDirectoryName(fullPath);
                 string fileName        = Path.GetFileNameWithoutExtension(protPath);
-                string outputPath      = Path.Combine(workingPath, target);
+                string outputPath      = Path.Combine( workingPath, target);
                 // 验证.proto文件是否存在
                 if (!File.Exists(fullPath))
                 {

@@ -1,0 +1,11 @@
+syntax = "proto3";
+package EasyProto.Sample;
+import "common/SimpleDef.proto";
+//standard google includes in easyproto package 
+//import "google/protobuf/any.proto";  
+message PlayerInput
+{
+    int32        input    = 1;
+    TextMessage  msg      = 2;
+}
+
