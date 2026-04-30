@@ -5,24 +5,19 @@ using UnityEditor;
 
 namespace Warkits.ToolBox.EasyProto
 { 
-    public class EasyProtoModule
+    public static class EasyProtoModule
     { 
         // Auto execute on plugin loaded
-        [InitializeOnLoadMethod]
-        private static void OnPluginLoaded()
-        {
-           // if (!SessionState.GetBool("ProtocDetected", false))
-            {
-                (_,string protocPath, string protocLocate) = GetProtoCompilerFolder();
-                
-                if ( !File.Exists(protocLocate) )
-                {
-                    string url  = "https://github.com/protocolbuffers/protobuf/releases/download/v34.1/protoc-34.1-"; 
-                    EasyDownloader.Fetch( url, protocPath );  
-                }
-            //    SessionState.SetBool("ProtocDetected", true);
-            }
-        }
+        // [InitializeOnLoadMethod]
+        // private static void OnPluginLoaded()
+        // {
+        //      (_,string protocPath, string protocLocate) = GetProtoCompilerFolder();
+        //      if ( !File.Exists(protocLocate) )
+        //      {
+        //             string url  = "https://github.com/protocolbuffers/protobuf/releases/download/v34.1/protoc-34.1-"; 
+        //             //EasyDownloader.Fetch( url, protocPath );  
+        //      } 
+        // }
 
         // Include folder, protoc folder, protoc full path
         static (string,string,string) GetProtoCompilerFolder()

@@ -12,17 +12,20 @@ using Debug = UnityEngine.Debug;
 namespace Warkits.ToolBox.EasyProto
 {
     public static class EasyDownloader
-    { 
+    {
+        public  static bool isFetching = false; 
         public static void Fetch(string url, string targetPath)
         {
-            string platform    = EasyProtoModule.DetectPlatform();
-            string finalTarget = targetPath;
-            //string finalTarget = Path.Combine(targetPath, platform);
-            string baseUrl     = url + platform + ".zip";
-
-            string[] urls = BuildUrlFallbacks(baseUrl);
-
-            EasyFetchWindow.Open(urls, finalTarget, platform);
+            if ( !SessionState.GetBool("Fetching", false) )
+            {
+                SessionState.SetBool("Fetching", true);
+                string platform    = EasyProtoModule.DetectPlatform();
+                string finalTarget = targetPath;
+                //string finalTarget = Path.Combine(targetPath, platform);
+                string baseUrl     = url + platform + ".zip";
+                string[] urls      = BuildUrlFallbacks(baseUrl);
+                EasyFetchWindow.Open(urls, finalTarget, platform);
+            }
         }
  
 
@@ -53,14 +56,11 @@ namespace Warkits.ToolBox.EasyProto
 
         VisualElement progressFill;
         Label speedLabel;
-        Button confirmBtn;
-
-        bool isDownloading = false;
-        private static bool opened = false;
+        Button confirmBtn; 
+       
+       
         public static void Open(string[] urls, string targetPath, string platform)
-        {
-            if (opened) return;
-            opened           = true;
+        { 
             var wnd          = CreateInstance<EasyFetchWindow>();
             wnd.titleContent = new GUIContent("Easy ProtoBuffer Downloader");
             wnd.urls         = urls;
@@ -69,22 +69,24 @@ namespace Warkits.ToolBox.EasyProto
             wnd.minSize      = new Vector2(480  , 200);
             wnd.maxSize      = new Vector2(480  , 300);  
             wnd.ShowUtility();
-            wnd.Init();
-           
+            wnd.Init(); 
         }
+         
         void OnEnable()
         {
             EditorApplication.update += OnEditorUpdate;
         }
 
-        void OnDisable()
+        private void OnDestroy()
         {
             EditorApplication.update -= OnEditorUpdate;
+            
+            SessionState.SetBool("Fetching", false);
         }
 
         void OnEditorUpdate()
         {
-            if (isDownloading)
+            //if (isDownloading)
             {
                 Repaint(); 
             }
@@ -151,11 +153,8 @@ namespace Warkits.ToolBox.EasyProto
 
             confirmBtn    = new Button(StartDownload) { text = "Download" };
             var cancelBtn = new Button(() =>
-            {
-                if (!isDownloading)
-                {
-                    Close();    opened = false;
-                }
+            { 
+               Close();   
             }) { text = "Cancel" };
 
             btnRow.Add(confirmBtn);
@@ -186,7 +185,7 @@ namespace Warkits.ToolBox.EasyProto
 
         async void StartDownload()
         {
-            isDownloading = true;
+            
             confirmBtn.SetEnabled(false);
 
             string zipPath = Path.Combine(targetPath, "temp.zip");
@@ -211,8 +210,7 @@ namespace Warkits.ToolBox.EasyProto
                 if (!success)
                 {
                     Debug.LogError("All downloads failed");
-                    Close();
-                    opened = false;
+                    Close(); 
                     return;
                 }
 
@@ -223,14 +221,14 @@ namespace Warkits.ToolBox.EasyProto
                 File.Delete(zipPath);
 
                 Debug.Log("EasyFetch Done");
-                Close(); opened = false;
+                Close();  
                 
                 EasyProtoModule.ManualCompileAllProtos();
             }
             catch (Exception e)
             {
                 Debug.LogError(e);
-                Close();opened = false;
+                Close(); 
             }
         }
 

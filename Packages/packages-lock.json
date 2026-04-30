@@ -191,7 +191,7 @@
       "url": "https://packages.unity.com"
     },
     "com.warkits.protobuffer": {
-      "version": "file:com.warkits.protobuffer",
+      "version": "file:com.warkits.easyproto",
       "depth": 0,
       "source": "embedded",
       "dependencies": {
