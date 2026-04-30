@@ -1,7 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using JetBrains.Annotations;
+﻿using System; 
+using System.IO; 
 using UnityEngine;
 using UnityEditor;
 
@@ -44,53 +42,38 @@ namespace Warkits.ToolBox.EasyProto
             return (includePath, protocPath, protocLocate);
         }
         
-        
-        
         [MenuItem("Tools/EasyProto/Compile All Protos")]
         public static void ManualCompileAllProtos()
         {
-            string[] allProtoFiles = Directory.GetFiles(Application.dataPath, "*.proto", SearchOption.AllDirectories);
-            List<string> protoPaths = new List<string>();
-            
-            foreach (string file in allProtoFiles)
-            {
-                // 转换为相对路径
-                string relativePath = "Assets" + file.Substring(Application.dataPath.Length);
-                protoPaths.Add(relativePath);
-            }
-            
-            if (protoPaths.Count > 0)
-            {
-                foreach (string assetPath in protoPaths)
-                {
-                      // 延迟处理，避免阻塞
-                      EditorApplication.delayCall += () => ProcessProtoFileAsync(assetPath); 
-                }
-                //EditorUtility.DisplayDialog("EasyProto", $"Compiled {protoPaths.Count} proto files", "OK");
-            }
-            else
-            {
-                //EditorUtility.DisplayDialog("EasyProto", "No .proto files found", "OK");
-            }
-        }
-        
-        private static void ProcessProtoFileAsync(string protPath)
-        {
-            // 使用delayCall确保不在AssetPostprocessor中直接执行
-            EditorApplication.delayCall += () =>
-            {
-                try
-                {
-                    CompileProtoFile(protPath,null,null);
-                }
-                catch (Exception ex)
-                {
-                    Debug.LogError($"[ProtoImporter] 处理文件 {protPath} 时出错: {ex.Message}");
-                }
-            };
-        }
+            // 获取整个 Unity 项目的 Assets 路径
+            string assetsPath = UnityEngine.Application.dataPath; 
+            // 搜索所有 .proto 文件（包括子文件夹）
+            string[] protoFiles = Directory.GetFiles(
+                assetsPath, 
+                "*.proto", 
+                SearchOption.AllDirectories
+            );
 
-        public  static void CompileProtoFile( string protPath,List<string> includes,[CanBeNull] string target )
+            int count = 0;
+
+            // 遍历并重新导入
+            foreach (string filePath in protoFiles)
+            {
+                // 把系统路径转为 Unity 可识别的 Asset 路径（关键！）
+                string assetPath = filePath.Replace(assetsPath, "Assets");
+            
+                // 强制重新导入 → 自动触发你的 CustomImporter
+                AssetDatabase.ImportAsset(assetPath, ImportAssetOptions.ForceUpdate);
+            
+                count++;
+            }
+
+            // 提示完成
+            EditorUtility.DisplayDialog("Success", 
+                $"重新导入完成！\n共处理 {count} 个 .proto 文件", "OK");
+        }
+         
+        public  static void CompileProtoFile( string protPath,  string target )
         {
             string itemFolderPath = Path.GetDirectoryName(Path.GetFullPath(Application.dataPath + "/../" + protPath));
             //.ignore exists current directory,all files in this folder will be ignored
@@ -113,17 +96,23 @@ namespace Warkits.ToolBox.EasyProto
                 string fullPath        = Path.GetFullPath(Path.Combine(projectRoot  , protPath));
                 string workingPath     = Path.GetDirectoryName(fullPath);
                 string fileName        = Path.GetFileNameWithoutExtension(protPath);
+                string outputPath      = Path.Combine(workingPath, target);
                 // 验证.proto文件是否存在
                 if (!File.Exists(fullPath))
                 {
-                    Debug.LogWarning($"[ProtoImporter] .proto文件不存在: {fullPath}");
+                    Debug.LogWarning( $"[Easy protoBuffer] .proto does not exist: {fullPath}");
                     return;
-                } 
+                }
+
+                if (!Directory.Exists(outputPath))
+                {
+                    Directory.CreateDirectory(outputPath);
+                }
                 // 执行protoc命令
                 System.Diagnostics.ProcessStartInfo procInfo = new System.Diagnostics.ProcessStartInfo
                 {
                     FileName               = protocLocate,
-                    Arguments              = $"--proto_path=\"{includePath}\" --proto_path=\"{workingPath}\" --csharp_out=\"{workingPath}\" \"{fullPath}\"",
+                    Arguments              = $"--proto_path=\"{includePath}\" --proto_path=\"{workingPath}\" --csharp_out=\"{outputPath}\" \"{fullPath}\"",
                     WorkingDirectory       = workingPath,
                     UseShellExecute        = false,
                     CreateNoWindow         = true,

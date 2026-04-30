@@ -13,7 +13,7 @@
     {
       "displayName": "Easy Protocol Buffers Samples",
       "description": "",
-      "path": "Samples~/Samples"
+      "path": "Samples/Samples"
     }
   ],
   "dependencies": {
