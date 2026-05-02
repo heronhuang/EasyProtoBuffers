@@ -6,71 +6,108 @@ using System.IO;
 using System.IO.Compression;
 using System.Diagnostics;
 using System.Threading.Tasks;
-using System; 
+using System;
+using System.Collections.Generic;
 using Debug = UnityEngine.Debug;
 
 namespace Warkits.ToolBox.EasyProto
 {
-    public static class EasyDownloader
-    {
-        public  static bool isFetching = false; 
-        public static void Fetch(string url, string targetPath)
+    internal static class EasyDownloader
+    { 
+        internal class DownloadJob
         {
-            if ( !SessionState.GetBool("Fetching", false) )
-            {
-                SessionState.SetBool("Fetching", true);
-                string platform    = EasyProtoModule.DetectPlatform();
-                string finalTarget = targetPath;
-                //string finalTarget = Path.Combine(targetPath, platform);
-                string baseUrl     = url + platform + ".zip";
-                string[] urls      = BuildUrlFallbacks(baseUrl);
-                EasyFetchWindow.Open(urls, finalTarget, platform);
-            }
-        }
- 
+            public string url;
+            public string targetPath;
+            public Func<string,string,Task<bool>> ExtractJob;
+        } 
+        
+        public  static EasyFetchWindow m_Wnd; 
+        
+        public static void Fetch( string protocUrl, 
+                                  string libUrl, 
+                                  bool   downProtoc,
+                                  bool   downloadLib )
+        {
 
-        static string[] BuildUrlFallbacks(string githubUrl)
-        {
-            try
+            m_Wnd = EasyFetchWindow.Create("Easy ProtoBuffer Downloader", new Vector2(480, 200), new Vector2(480, 300));
+            if (downProtoc)
             {
-                return new string[]
+                m_Wnd.AddJob( new  DownloadJob()
                 {
-                    githubUrl,
-                    "https://ghproxy.com/" + githubUrl,
-                    "https://mirror.ghproxy.com/" + githubUrl,
-                    githubUrl.Replace("https://github.com/", "https://cdn.jsdelivr.net/gh/")
-                };
+                    url = protocUrl, 
+                    targetPath = EasyProtoModule.Environment.ProtocPath,
+                    ExtractJob = async (zipPath, targetPath) => 
+                    {
+                        // 调用提取 protoc 的逻辑
+                        await Task.Run(() => ExtractProtocOnly(zipPath, targetPath));
+                        ApplyChmod(targetPath);
+                        return true;
+                    }
+                });   
             }
-            catch
+            if (downloadLib)
             {
-                return new string[] { githubUrl };
+                m_Wnd.AddJob( new  DownloadJob()
+                {
+                    url = libUrl,  
+                    targetPath = EasyProtoModule.Environment.LibraryPath,
+                    ExtractJob = async (zipPath, targetPath) => 
+                    {
+                        // 调用提取库的逻辑
+                        await Task.Run(() => ExtractNet2Only(zipPath, targetPath));
+                        return true;
+                    }
+                });  
             }
-        }
+            m_Wnd.ConstructUI();
+            m_Wnd.ShowUtility(); 
+        } 
+         
+        
     }
-
-    public class EasyFetchWindow : EditorWindow
+    
+    internal class EasyFetchWindow : EditorWindow
     {
         string[] urls;
-        string targetPath;
+       
         string platform;
-
+        string libUrl, libTargetPath;
+ 
         VisualElement progressFill;
-        Label speedLabel;
-        Button confirmBtn; 
-       
-       
-        public static void Open(string[] urls, string targetPath, string platform)
-        { 
-            var wnd          = CreateInstance<EasyFetchWindow>();
-            wnd.titleContent = new GUIContent("Easy ProtoBuffer Downloader");
-            wnd.urls         = urls;
-            wnd.targetPath   = targetPath;
-            wnd.platform     = platform;
-            wnd.minSize      = new Vector2(480  , 200);
-            wnd.maxSize      = new Vector2(480  , 300);  
-            wnd.ShowUtility();
-            wnd.Init(); 
+        Label  speedLabel;
+        Button confirmBtn;
+        Label  m_URLContent;
+        List<EasyDownloader.DownloadJob> m_DownloadJobs = new(); 
+        public static EasyFetchWindow Create(string title , in Vector2 minSize, in Vector2 maxSize)
+        {
+            EasyFetchWindow wnd   = CreateInstance<EasyFetchWindow>();
+            wnd.titleContent      = new GUIContent("Easy ProtoBuffer Downloader"); 
+            wnd.minSize           = minSize;
+            wnd.maxSize           = maxSize;  
+            return wnd;
         }
+
+        public void AddJob(EasyDownloader.DownloadJob job)
+        {
+            m_DownloadJobs.Add(job);
+        }
+        
+       
+        // public static EasyFetchWindow Open( string[] urls, string targetPath, string platform,string libUrl,string libTarget )
+        // { 
+        //     EasyFetchWindow wnd          = CreateInstance<EasyFetchWindow>();
+        //     wnd.titleContent = new GUIContent("Easy ProtoBuffer Downloader");
+        //     wnd.urls         = urls;
+        //     wnd.targetPath   = targetPath;
+        //     wnd.platform     = platform;
+        //     wnd.libUrl       = libUrl;
+        //     wnd.libTargetPath = libTarget;
+        //     wnd.minSize      = new Vector2(480  , 200);
+        //     wnd.maxSize      = new Vector2(480  , 300);  
+        //     wnd.ShowUtility();
+        //     wnd.Init();
+        //     return wnd;
+        // }
          
         void OnEnable()
         {
@@ -85,43 +122,40 @@ namespace Warkits.ToolBox.EasyProto
         }
 
         void OnEditorUpdate()
+        { 
+            Repaint();  
+        } 
+        internal void UpdateContent()
         {
-            //if (isDownloading)
-            {
-                Repaint(); 
-            }
+            m_URLContent.text = m_DownloadJobs[0].url;
         }
-        void Init()
+        
+        internal void ConstructUI()
         {
             var root = rootVisualElement;
-            root.Clear();
-
-            root.style.paddingLeft = 12;
+            root.Clear(); 
+            root.style.paddingLeft  = 12;
             root.style.paddingRight = 12;
-            root.style.paddingTop = 12;
-
-            root.Add(new Label("Easy Proto needs to download from Github")
+            root.style.paddingTop   = 12; 
+            root.Add(new Label("Easy ProtoBuffer needs to download from Github/Nuget")
             {
                 style =
                 {
                     unityFontStyleAndWeight = FontStyle.Bold,
-                    fontSize = 14,
-                    marginBottom = 4
+                    fontSize                = 14,
+                    marginBottom            = 4
                 }
-            });
-
-            root.Add(new Label($"Platform: {platform}"));
-
-            root.Add(new Label(urls[0])
+            }); 
+            root.Add(new Label($"Platform: { EasyProtoModule.Environment.Plateform }"));
+            
+            m_URLContent = new Label($"Download URL")
             {
                 style = { fontSize = 10, marginBottom = 10 }
-            });
-
-          
+            }; 
+            root.Add(m_URLContent); 
             var progressBg                   = new VisualElement();
             progressBg.style.height          = 18;
-            progressBg.style.backgroundColor = new Color(0.2f      , 0.2f, 0.2f);
-            //progressBg.style.borderr = 6;
+            progressBg.style.backgroundColor = new Color(0.2f , 0.2f, 0.2f); 
             progressBg.style.overflow        = Overflow.Hidden;
             progressBg.style.flexGrow        = 1;
 
@@ -163,6 +197,7 @@ namespace Warkits.ToolBox.EasyProto
             root.Add(btnRow);
         }
 
+       
         Texture2D CreateGradient()
         {
             int w = 256;
@@ -184,91 +219,174 @@ namespace Warkits.ToolBox.EasyProto
         }
 
         async void StartDownload()
-        {
-            
+        { 
             confirmBtn.SetEnabled(false);
 
-            string zipPath = Path.Combine(targetPath, "temp.zip");
-
-            try
+            foreach (var job in m_DownloadJobs)
             {
-                if (!Directory.Exists(targetPath))
-                    Directory.CreateDirectory(targetPath);
-
-                bool success = false;
-
-                foreach (var url in urls)
+                string zipPath = Path.Combine( job.targetPath, "temp.zip" );
+                try
                 {
-                    Debug.Log("Try: " + url);
-                    if (await Download(url, zipPath))
+                    if (!Directory.Exists(job.targetPath))
+                        Directory.CreateDirectory(job.targetPath);
+                    bool success = false;
+                    foreach (var url in urls)
                     {
-                        success = true;
-                        break;
+                        Debug.Log("Try: " + url);
+                        if (await Download(url, zipPath))
+                        {
+                            success = true;
+                            break;
+                        }
+                    }
+
+                    if (success)
+                    {
+                        //extract zip
+                        if (job.ExtractJob != null)
+                        {
+                            await job.ExtractJob( zipPath, job.targetPath );
+                        }
+                    }
+                    else 
+                    {
+                        Debug.LogError("All downloads failed");
+                        Close();
+                        return;
                     }
                 }
-
-                if (!success)
+                catch (Exception e)
                 {
-                    Debug.LogError("All downloads failed");
+                    Debug.LogError(e);
                     Close(); 
-                    return;
                 }
-
-                ExtractProtocOnly(zipPath, targetPath);
-
-                ApplyChmod(targetPath);
-
-                File.Delete(zipPath);
-
-                Debug.Log("EasyFetch Done");
-                Close();  
-                
-                EasyProtoModule.ManualCompileAllProtos();
             }
-            catch (Exception e)
-            {
-                Debug.LogError(e);
-                Close(); 
-            }
+
+            // ExtractAllFromZip( zipPath, targetPath );
+            //     ApplyChmod(targetPath); 
+            //     File.Delete(zipPath); 
+            //     
+            //     success = false; 
+            //     zipPath = Path.Combine(libTargetPath, "temp.zip"); 
+            //     if (!Directory.Exists(libTargetPath))
+            //         Directory.CreateDirectory(libTargetPath);  
+            //     if (await Download(libUrl, zipPath))
+            //     {
+            //         success = true; 
+            //     } 
+            //     if (!success)
+            //     {
+            //         Debug.LogError("DotNet lib downloads failed");
+            //         Close(); 
+            //         return;
+            //     } 
+            //     ExtractNet2Only( zipPath, libTargetPath );  
+            //     File.Delete(zipPath);   
+            //     Debug.Log("All ProtoTools and library resources have been downloaded.");
+            //     Close(); 
+            //     
+            //     EasyProtoModule.ManualCompileAllProtos(); 
         }
-
-        async Task<bool> Download(string url, string path)
+        private static string[] BuildUrlFallbacks(string originalUrl)
         {
             try
-            {
-                using (UnityWebRequest req = UnityWebRequest.Get(url))
+            { 
+                if (originalUrl.StartsWith("https://github.com/", StringComparison.OrdinalIgnoreCase))
                 {
-                    req.downloadHandler = new DownloadHandlerFile(path);
-
-                    var op = req.SendWebRequest();
-
-                    Stopwatch sw = new Stopwatch();
-                    sw.Start();
-
-                    while (!op.isDone)
+                    return new[]
                     {
-                        float p = req.downloadProgress;
-
-                        double sec = sw.Elapsed.TotalSeconds;
-                        double mb = req.downloadedBytes / (1024.0 * 1024.0);
-                        double speed = sec > 0 ? mb / sec : 0;
-
-                        progressFill.style.width = Length.Percent(p * 100f);
-                        speedLabel.text = $"{speed:F2} MB/s";
-
-                        await Task.Delay(50);
+                        originalUrl,
+                        "https://ghproxy.com/" + originalUrl,
+                        "https://mirror.ghproxy.com/" + originalUrl,
+                        originalUrl.Replace("https://github.com/", "https://cdn.jsdelivr.net/gh/", StringComparison.OrdinalIgnoreCase)
+                    };
+                } 
+                if (originalUrl.StartsWith("https://www.nuget.org/", StringComparison.OrdinalIgnoreCase))
+                { 
+                    return new[]
+                    {
+                        originalUrl,
+                        originalUrl.Replace("https://www.nuget.org/", "https://mirror.baidu.com/nuget/", StringComparison.OrdinalIgnoreCase),
+                        originalUrl.Replace("https://www.nuget.org/", "https://nuget.cdn.azure.cn/", StringComparison.OrdinalIgnoreCase)
+                    };
+                } 
+                return new[] { originalUrl };
+            }
+            catch
+            { 
+                return new[] { originalUrl };
+            }
+        }
+        async Task<bool> Download( string url_, string path )
+        {
+            string[] urls   = BuildUrlFallbacks(url_); 
+            try
+            {
+                foreach (var url in urls)
+                {
+                    using ( UnityWebRequest req = UnityWebRequest.Get(url) )
+                    {
+                        req.downloadHandler = new DownloadHandlerFile(path); 
+                        var op              = req.SendWebRequest(); 
+                        Stopwatch sw        = new Stopwatch();
+                        sw.Start(); 
+                        while (!op.isDone)
+                        {
+                            float p      = req.downloadProgress; 
+                            double sec   = sw.Elapsed.TotalSeconds;
+                            double mb    = req.downloadedBytes / (1024.0 * 1024.0);
+                            double speed = sec > 0 ? mb / sec  : 0; 
+                            progressFill.style.width = Length.Percent(p * 100f);
+                            speedLabel.text = $"{speed:F2} MB/s"; 
+                            await Task.Delay(50);
+                        } 
+                        if (req.result != UnityWebRequest.Result.Success)
+                        {
+                            continue;
+                        } 
+                        return true;
                     }
-
-                    if (req.result != UnityWebRequest.Result.Success)
-                        return false;
-
-                    return true;
                 }
+
+                return false;
             }
             catch
             {
                 return false;
             }
+        }
+        
+        void ExtractNet2Only( string zipPath, string targetPath)
+        {
+            using (ZipArchive archive = ZipFile.OpenRead(zipPath))
+            {
+                foreach (var entry in archive.Entries)
+                {
+                    string name = entry.FullName.Replace("\\", "/");
+
+                    if ( name == "lib/netstandard2.0/Google.Protobuf.dll")
+                    {
+                        string dest = Path.Combine( targetPath, "Google.Protobuf.dll" );
+                        entry.ExtractToFile(dest, true);
+                    }
+                }
+            }
+        }
+        
+        void ExtractAllFromZip( string zipPath, string targetPath )
+        {  
+            using (ZipArchive archive = ZipFile.OpenRead(zipPath))
+            {
+                foreach (ZipArchiveEntry entry in archive.Entries)
+                {
+                    string entryFullName = entry.FullName.Replace('\\', '/'); 
+                    if ( entryFullName.EndsWith('/') )
+                        continue;  
+                    string destFilePath = Path.Combine(targetPath, entryFullName); 
+                    Directory.CreateDirectory( Path.GetDirectoryName( destFilePath ) );
+                    entry.ExtractToFile( destFilePath, overwrite: true );
+                }
+            } 
         }
 
         void ExtractProtocOnly(string zipPath, string targetPath)
@@ -293,7 +411,7 @@ namespace Warkits.ToolBox.EasyProto
 #if UNITY_EDITOR_OSX || UNITY_EDITOR_LINUX
         try
         {
-            string exe = Path.Combine(path, "protoc");
+            string exe = Path.Combine(path, "bin/protoc");
             if (File.Exists(exe))
             {
                 Process p = new Process();

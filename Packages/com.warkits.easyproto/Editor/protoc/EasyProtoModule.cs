@@ -1,5 +1,6 @@
 ﻿using System; 
-using System.IO; 
+using System.IO;
+using JetBrains.Annotations;
 using UnityEngine;
 using UnityEditor;
 
@@ -7,50 +8,81 @@ namespace Warkits.ToolBox.EasyProto
 { 
     public static class EasyProtoModule
     { 
-        // Auto execute on plugin loaded
-        // [InitializeOnLoadMethod]
-        // private static void OnPluginLoaded()
-        // {
-        //      (_,string protocPath, string protocLocate) = GetProtoCompilerFolder();
-        //      if ( !File.Exists(protocLocate) )
-        //      {
-        //             string url  = "https://github.com/protocolbuffers/protobuf/releases/download/v34.1/protoc-34.1-"; 
-        //             //EasyDownloader.Fetch( url, protocPath );  
-        //      } 
-        // }
+        internal static class Environment
+        { 
+            static string m_LibraryPath;
+            static string m_Version; 
+            static string m_IncludePath;
+            static string m_BinPath;
+            static string m_ProtocPath;
+            static string m_Platform;
+            static string m_ProtocFilename;
+            internal static string ProtocPath    => m_ProtocPath;
+            internal static string BinPath       => m_BinPath;
+            internal static string IncludePath   => m_IncludePath;
 
-        // Include folder, protoc folder, protoc full path
-        static (string,string,string) GetProtoCompilerFolder()
-        {
-            string projectRoot     = Application.dataPath + "/../";
-            string scriptPath      = GetCurrentScriptPath();
-            string scriptDirectory = projectRoot + Path.GetDirectoryName(scriptPath);
-            string platformFolder  = DetectPlatform();
-            string includePath     = Path.Combine( scriptDirectory ,".inc");
-            string protocPath      = Path.Combine( scriptDirectory ,".bin" );
-            protocPath             = Path.Combine( protocPath  ,platformFolder );
+            internal static string LibraryPath   => m_LibraryPath;
+            internal static string Version       => m_Version;
+            internal static string Plateform    => m_Platform;
+            internal static string ProtocFilename => m_ProtocFilename;
+            internal static void Init()
+            {
+                string projectRoot = Application.dataPath + "/../";
+                string currentPath = GetCurrentScriptPath();
+                currentPath        = projectRoot + Path.GetDirectoryName(currentPath);
+                string version_    = GetProtoVersion( Path.Combine(currentPath        , "../../Config") );
+                m_Version          = version_ ?? "34.1";
+                m_LibraryPath      = Path.Combine( currentPath    , "../../Runtime/Plugins");
+                m_Platform         = DetectPlatform();
+                string protocPath  = Path.Combine( currentPath    , ".protoc" );
+                //./.protoc/win64
+                m_ProtocPath       = Path.Combine( protocPath     , m_Platform );
+                //./.protoc/win64/include
+                m_IncludePath      = Path.Combine ( m_ProtocPath  , "include");
+                //./.protoc/win64/bin
+                m_BinPath          = Path.Combine ( m_ProtocPath  , "bin" ); 
 #if UNITY_EDITOR_WIN
-            string protocLocate    = Path.Combine( protocPath  ,"protoc.exe");
+                m_ProtocFilename = "protoc.exe"; 
 #else
-           string protocLocate    = Path.Combine( protocPath   ,"protoc");
+                m_ProtocFilename = "protoc";   
 #endif
-            return (includePath, protocPath, protocLocate);
+            } 
         }
-        
+        //path without filename
+        [CanBeNull]
+        static string GetProtoVersion( string folder )
+        {
+            string versionfile  = Path.Combine( folder, "ver");
+            if (File.Exists(versionfile))
+            {
+                foreach (var line in File.ReadLines(versionfile))
+                {
+                    var trimLine = line.Trim();
+                    //skip commends and empty line
+                    if (string.IsNullOrEmpty(trimLine) || trimLine.StartsWith("#")) continue;
+                    return trimLine;
+                }
+            } 
+            return null; 
+        } 
+
+        [InitializeOnLoadMethod]
+        private static void OnPluginLoaded()
+        {
+            Environment.Init();
+        }
+          
         [MenuItem("Tools/EasyProto/Compile All Protos")]
         public static void ManualCompileAllProtos()
         {
             // Get the Assets path of the entire Unity project
             string assetsPath = UnityEngine.Application.dataPath; 
             // Search for all .proto files (including subfolders)
-            string[] protoFiles = Directory.GetFiles(
-                assetsPath, 
-                "*.proto", 
-                SearchOption.AllDirectories
-            );
-
-            int count = 0;
-
+            string[] protoFiles = Directory.GetFiles( assetsPath, 
+                                                      "*.proto", 
+                                                      SearchOption.AllDirectories
+            ); 
+            int count = 0; 
             // Traverse and re-import
             foreach (string filePath in protoFiles)
             {
@@ -62,39 +94,45 @@ namespace Warkits.ToolBox.EasyProto
             }  
             Debug.Log($"[East ProtoBuffer] Compile completed! Total: {count} .proto files processed.");
         }
-         
-        public  static void CompileProtoFile( string protPath,  string target )
-        {
-            string itemFolderPath = Path.GetDirectoryName(Path.GetFullPath(Application.dataPath + "/../" + protPath));
-            if (target == null) target = "";
-            // .ignore exists in current directory, all files in this folder will be ignored
-            string ignoreTag      = Path.Combine( itemFolderPath  , ".ignore" );
-            if (File.Exists(ignoreTag)) 
-            {
-                return;
-            } 
-            (string includePath,string protocPath, string protocLocate) = GetProtoCompilerFolder();
 
+        static bool Protoc_NeedDownload()
+        {
+            string curVersion  =  GetProtoVersion(Environment.ProtocPath);
+            return curVersion != Environment.Version; 
+        }
+
+        static bool Library_NeedDownload()
+        {
+            string curVersion  = GetProtoVersion(Environment.LibraryPath);
+            return curVersion != Environment.Version; 
+        }
+        
+        
+        public  static void CompileProtoFile( string protoFilePath,  string target )
+        {
+            bool needDownloadProtoc  = Protoc_NeedDownload();
+            bool needDownloadLibrary = Library_NeedDownload();
             // Verify if protoc exists
-            if ( !File.Exists(protocLocate) )
+            if ( needDownloadProtoc || needDownloadLibrary )
             {
-                string url  = "https://github.com/protocolbuffers/protobuf/releases/download/v34.1/protoc-34.1-"; 
-                EasyDownloader.Fetch( url, protocPath );  
-            }
+                string version     = Environment.Version;
+                string protoc_url  = $"https://github.com/protocolbuffers/protobuf/releases/download/v{version}/protoc-{version}-";
+                string lib_url     = $"https://www.nuget.org/api/v2/package/Google.Protobuf/3.{version}";
+                EasyDownloader.Fetch( protoc_url, lib_url,needDownloadProtoc,needDownloadLibrary );  
+            } 
             else
             {
                 string projectRoot     = Application.dataPath + "/../"; 
-                string fullPath        = Path.GetFullPath(Path.Combine(projectRoot  , protPath));
-                string workingPath     = Path.GetDirectoryName(fullPath);
-                string fileName        = Path.GetFileNameWithoutExtension(protPath);
-                string outputPath      = Path.Combine( workingPath, target);
+                string fullPath        = Path.GetFullPath( Path.Combine(projectRoot, protoFilePath) );
+                string protoPath       = Path.GetDirectoryName( fullPath )??projectRoot;
+                string fileName        = Path.GetFileNameWithoutExtension( protoFilePath );
+                string outputPath      = Path.Combine( protoPath, target);
                 // Check if .proto exists
                 if (!File.Exists(fullPath))
                 {
-                    Debug.LogWarning( $"[Easy protoBuffer] .proto does not exist: {fullPath}");
+                    Debug.LogWarning( $"[Easy ProtoBuffer] .proto does not exist: {fullPath}");
                     return;
                 }
-
                 if (!Directory.Exists(outputPath))
                 {
                     Directory.CreateDirectory(outputPath);
@@ -102,13 +140,13 @@ namespace Warkits.ToolBox.EasyProto
                 // Execute protoc command
                 System.Diagnostics.ProcessStartInfo procInfo = new System.Diagnostics.ProcessStartInfo
                 {
-                    FileName               = protocLocate,
-                    Arguments              = $"--proto_path=\"{includePath}\" --proto_path=\"{workingPath}\" --csharp_out=\"{outputPath}\" \"{fullPath}\"",
-                    WorkingDirectory       = workingPath,
-                    UseShellExecute        = false,
-                    CreateNoWindow         = true,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError  = true
+                    FileName               =  Environment.ProtocFilename,
+                    Arguments              =  $"--proto_path=\"{Environment.IncludePath}\" --proto_path=\"{protoPath}\" --csharp_out=\"{outputPath}\" \"{fullPath}\"",
+                    WorkingDirectory       =  Environment.BinPath,
+                    UseShellExecute        =  false,
+                    CreateNoWindow         =  true,
+                    RedirectStandardOutput =  true,
+                    RedirectStandardError  =  true
                 };
 
                 using (var process = System.Diagnostics.Process.Start(procInfo))
