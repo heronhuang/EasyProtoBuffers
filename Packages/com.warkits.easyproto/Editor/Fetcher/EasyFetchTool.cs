@@ -102,6 +102,7 @@ namespace Warkits.ToolBox.EasyProto
                         } });
                         WriteVersion(targetPath);
                         ApplyChmod( targetPath+"/bin/protoc" );
+                        File.Delete(zipPath);
                         return true;
                     }
                 });   
@@ -120,6 +121,7 @@ namespace Warkits.ToolBox.EasyProto
                             ExtractNet2Only( zipPath, targetPath );   
                         });
                         WriteVersion(targetPath);
+                        File.Delete(zipPath);
                         return true;
                     }
                 });  
