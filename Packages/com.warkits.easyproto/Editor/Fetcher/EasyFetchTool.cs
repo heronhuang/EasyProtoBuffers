@@ -20,7 +20,11 @@ namespace Warkits.ToolBox.EasyProto
             public string targetPath;
             public Func<string,string,Task<bool>> ExtractJob;
         } 
-        
+        static void WriteVersion(string targetPath)
+        {
+            string versionfile = Path.Combine(targetPath, "version.txt");
+            File.WriteAllText( versionfile, EasyProtoModule.Environment.Version );
+        }
         public  static EasyFetchWindow m_Wnd; 
         static void ExtractAllFromZip( string zipPath, string targetPath )
         {  
@@ -41,13 +45,12 @@ namespace Warkits.ToolBox.EasyProto
         {
 #if UNITY_EDITOR_OSX || UNITY_EDITOR_LINUX
         try
-        {
-            string exe = Path.Combine(path, "bin/protoc");
+        { 
             if (File.Exists(exe))
             {
                 Process p = new Process();
                 p.StartInfo.FileName = "/bin/chmod";
-                p.StartInfo.Arguments = $"+x \"{exe}\"";
+                p.StartInfo.Arguments = $"+x \"{path}\"";
                 p.StartInfo.UseShellExecute = false;
                 p.StartInfo.CreateNoWindow = true;
                 p.Start();
@@ -97,6 +100,7 @@ namespace Warkits.ToolBox.EasyProto
                         {
                             ExtractAllFromZip(zipPath, targetPath);
                         } });
+                        WriteVersion(targetPath);
                         ApplyChmod( targetPath+"/bin/protoc" );
                         return true;
                     }
@@ -115,6 +119,7 @@ namespace Warkits.ToolBox.EasyProto
                         {
                             ExtractNet2Only( zipPath, targetPath );   
                         });
+                        WriteVersion(targetPath);
                         return true;
                     }
                 });  
@@ -292,10 +297,10 @@ namespace Warkits.ToolBox.EasyProto
                 return new[] { originalUrl };
             }
         }
+      
         async void StartDownload()
         { 
-            confirmBtn.SetEnabled(false);
-
+            confirmBtn.SetEnabled(false); 
             foreach (var job in m_DownloadJobs)
             {
                 string zipPath = Path.Combine( job.targetPath, "temp.zip" );
@@ -323,32 +328,9 @@ namespace Warkits.ToolBox.EasyProto
                     Debug.LogError(e);
                     Close(); 
                 }
-            }
-
-            // ExtractAllFromZip( zipPath, targetPath );
-            //     ApplyChmod(targetPath); 
-            //     File.Delete(zipPath); 
-            //     
-            //     success = false; 
-            //     zipPath = Path.Combine(libTargetPath, "temp.zip"); 
-            //     if (!Directory.Exists(libTargetPath))
-            //         Directory.CreateDirectory(libTargetPath);  
-            //     if (await Download(libUrl, zipPath))
-            //     {
-            //         success = true; 
-            //     } 
-            //     if (!success)
-            //     {
-            //         Debug.LogError("DotNet lib downloads failed");
-            //         Close(); 
-            //         return;
-            //     } 
-            //     ExtractNet2Only( zipPath, libTargetPath );  
-            //     File.Delete(zipPath);   
-            //     Debug.Log("All ProtoTools and library resources have been downloaded.");
-            //     Close(); 
-            //     
-            //     EasyProtoModule.ManualCompileAllProtos(); 
+            } 
+            Close();  
+            EasyProtoModule.ManualCompileAllProtos(); 
         }
         
         async Task<bool> Download( string url_, string path )
@@ -388,24 +370,6 @@ namespace Warkits.ToolBox.EasyProto
             {
                 return false;
             }
-        }
-        
-        
-        
-        // void ExtractAllFromZip( string zipPath, string targetPath )
-        // {  
-        //     using (ZipArchive archive = ZipFile.OpenRead(zipPath))
-        //     {
-        //         foreach (ZipArchiveEntry entry in archive.Entries)
-        //         {
-        //             string entryFullName = entry.FullName.Replace('\\', '/'); 
-        //             if ( entryFullName.EndsWith('/') )
-        //                 continue;  
-        //             string destFilePath = Path.Combine(targetPath, entryFullName); 
-        //             Directory.CreateDirectory( Path.GetDirectoryName( destFilePath ) );
-        //             entry.ExtractToFile( destFilePath, overwrite: true );
-        //         }
-        //     } 
-        // } 
+        } 
     }
 }
