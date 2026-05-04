@@ -17,6 +17,7 @@ namespace Warkits.ToolBox.EasyProto
             static string m_ProtocPath;
             static string m_Platform;
             static string m_ProtocFilename;
+            static string m_ProtocLaunchPath;
             internal static string ProtocPath    => m_ProtocPath;
             internal static string BinPath       => m_BinPath;
             internal static string IncludePath   => m_IncludePath;
@@ -25,16 +26,22 @@ namespace Warkits.ToolBox.EasyProto
             internal static string Version       => m_Version;
             internal static string Plateform    => m_Platform;
             internal static string ProtocFilename => m_ProtocFilename;
+            internal static string ProtocLaunchPath => m_ProtocLaunchPath;
+          
             internal static void Init()
             {
                 string projectRoot = Application.dataPath + "/../";
                 string currentPath = GetCurrentScriptPath();
                 currentPath        = projectRoot + Path.GetDirectoryName(currentPath);
-                string version_    = GetProtoVersion( Path.Combine(currentPath        , "../../Config") );
+                string version_    = GetProtoVersion( Path.Combine( currentPath  , "../../Config" ) );
                 m_Version          = version_ ?? "34.1";
                 m_LibraryPath      = Path.Combine( currentPath    , "../../Runtime/Plugins");
                 m_Platform         = DetectPlatform();
                 string protocPath  = Path.Combine( currentPath    , ".protoc" );
+                if (!Directory.Exists(protocPath))
+                {
+                    Directory.CreateDirectory(protocPath);
+                }
                 //./.protoc/win64
                 m_ProtocPath       = Path.Combine( protocPath     , m_Platform );
                 //./.protoc/win64/include
@@ -42,17 +49,18 @@ namespace Warkits.ToolBox.EasyProto
                 //./.protoc/win64/bin
                 m_BinPath          = Path.Combine ( m_ProtocPath  , "bin" ); 
 #if UNITY_EDITOR_WIN
-                m_ProtocFilename = "protoc.exe"; 
+                m_ProtocFilename = "protoc.exe";
 #else
                 m_ProtocFilename = "protoc";   
 #endif
+                m_ProtocLaunchPath = Path.Combine( m_BinPath, m_ProtocFilename);
             } 
         }
         //path without filename
         [CanBeNull]
         static string GetProtoVersion( string folder )
         {
-            string versionfile  = Path.Combine( folder, "ver");
+            string versionfile  = Path.Combine( folder, "version");
             if (File.Exists(versionfile))
             {
                 foreach (var line in File.ReadLines(versionfile))
@@ -116,7 +124,7 @@ namespace Warkits.ToolBox.EasyProto
             if ( needDownloadProtoc || needDownloadLibrary )
             {
                 string version     = Environment.Version;
-                string protoc_url  = $"https://github.com/protocolbuffers/protobuf/releases/download/v{version}/protoc-{version}-";
+                string protoc_url  = $"https://github.com/protocolbuffers/protobuf/releases/download/v{version}/protoc-{version}-{Environment.Plateform}.zip";
                 string lib_url     = $"https://www.nuget.org/api/v2/package/Google.Protobuf/3.{version}";
                 EasyDownloader.Fetch( protoc_url, lib_url,needDownloadProtoc,needDownloadLibrary );  
             } 
@@ -140,7 +148,7 @@ namespace Warkits.ToolBox.EasyProto
                 // Execute protoc command
                 System.Diagnostics.ProcessStartInfo procInfo = new System.Diagnostics.ProcessStartInfo
                 {
-                    FileName               =  Environment.ProtocFilename,
+                    FileName               =  Environment.ProtocLaunchPath,
                     Arguments              =  $"--proto_path=\"{Environment.IncludePath}\" --proto_path=\"{protoPath}\" --csharp_out=\"{outputPath}\" \"{fullPath}\"",
                     WorkingDirectory       =  Environment.BinPath,
                     UseShellExecute        =  false,

@@ -1,13 +1,14 @@
-using UnityEditor;
-using UnityEngine;
-using UnityEngine.UIElements;
-using UnityEngine.Networking;
-using System.IO;
-using System.IO.Compression;
-using System.Diagnostics;
-using System.Threading.Tasks;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.IO.Compression;
+using System.Threading.Tasks;
+using UnityEditor;
+using UnityEngine;
+using UnityEngine.Networking;
+using UnityEngine.UIElements;
+using UnityEngine.WSA;
 using Debug = UnityEngine.Debug;
 
 namespace Warkits.ToolBox.EasyProto
@@ -22,7 +23,68 @@ namespace Warkits.ToolBox.EasyProto
         } 
         
         public  static EasyFetchWindow m_Wnd; 
+        static void ExtractAllFromZip( string zipPath, string targetPath )
+        {  
+            using (ZipArchive archive = ZipFile.OpenRead(zipPath))
+            {
+                foreach (ZipArchiveEntry entry in archive.Entries)
+                {
+                    string entryFullName = entry.FullName.Replace('\\', '/'); 
+                    if ( entryFullName.EndsWith('/') )
+                        continue;  
+                    string destFilePath = Path.Combine(targetPath, entryFullName); 
+                    Directory.CreateDirectory( Path.GetDirectoryName( destFilePath ) );
+                    entry.ExtractToFile( destFilePath, overwrite: true );
+                }
+            } 
+        }
+        static void ApplyChmod(string path)
+        {
+#if UNITY_EDITOR_OSX || UNITY_EDITOR_LINUX
+        try
+        {
+            string exe = Path.Combine(path, "bin/protoc");
+            if (File.Exists(exe))
+            {
+                Process p = new Process();
+                p.StartInfo.FileName = "/bin/chmod";
+                p.StartInfo.Arguments = $"+x \"{exe}\"";
+                p.StartInfo.UseShellExecute = false;
+                p.StartInfo.CreateNoWindow = true;
+                p.Start();
+                p.WaitForExit();
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning(e);
+        }
+#endif
+        }
         
+        static void ExtractNet2Only( string zipPath, string targetPath)
+        {
+            using (ZipArchive archive = ZipFile.OpenRead(zipPath))
+            {
+                foreach (var entry in archive.Entries)
+                {
+                    string name = entry.FullName.Replace("\\", "/");
+
+                    if ( name == "lib/netstandard2.0/Google.Protobuf.dll")
+                    {
+                        string dest = Path.Combine( targetPath, "Google.Protobuf.dll" );
+                        entry.ExtractToFile(dest, true);
+                    }
+                }
+            }
+        }
+
+        static void WriteVersion(string targetPath)
+        {
+            string versionfile = Path.Combine( targetPath, "version" ); 
+            File.WriteAllText( versionfile, EasyProtoModule.Environment.Version );
+        }
+
         public static void Fetch( string protocUrl, 
                                   string libUrl, 
                                   bool   downProtoc,
@@ -39,8 +101,13 @@ namespace Warkits.ToolBox.EasyProto
                     ExtractJob = async (zipPath, targetPath) => 
                     {
                         // 调用提取 protoc 的逻辑
-                        await Task.Run(() => ExtractProtocOnly(zipPath, targetPath));
-                        ApplyChmod(targetPath);
+                        await Task.Run(() => {
+                        {
+                            ExtractAllFromZip(zipPath, targetPath); 
+                            File.Delete(zipPath);
+                            WriteVersion(targetPath);
+                        } });
+                        ApplyChmod( targetPath+"/bin/protoc" );
                         return true;
                     }
                 });   
@@ -54,7 +121,12 @@ namespace Warkits.ToolBox.EasyProto
                     ExtractJob = async (zipPath, targetPath) => 
                     {
                         // 调用提取库的逻辑
-                        await Task.Run(() => ExtractNet2Only(zipPath, targetPath));
+                        await Task.Run(() =>
+                        {
+                            ExtractNet2Only( zipPath, targetPath );
+                            File.Delete(zipPath);
+                            WriteVersion(targetPath);
+                        });
                         return true;
                     }
                 });  
@@ -68,8 +140,7 @@ namespace Warkits.ToolBox.EasyProto
     
     internal class EasyFetchWindow : EditorWindow
     {
-        string[] urls;
-       
+        
         string platform;
         string libUrl, libTargetPath;
  
@@ -92,23 +163,6 @@ namespace Warkits.ToolBox.EasyProto
             m_DownloadJobs.Add(job);
         }
         
-       
-        // public static EasyFetchWindow Open( string[] urls, string targetPath, string platform,string libUrl,string libTarget )
-        // { 
-        //     EasyFetchWindow wnd          = CreateInstance<EasyFetchWindow>();
-        //     wnd.titleContent = new GUIContent("Easy ProtoBuffer Downloader");
-        //     wnd.urls         = urls;
-        //     wnd.targetPath   = targetPath;
-        //     wnd.platform     = platform;
-        //     wnd.libUrl       = libUrl;
-        //     wnd.libTargetPath = libTarget;
-        //     wnd.minSize      = new Vector2(480  , 200);
-        //     wnd.maxSize      = new Vector2(480  , 300);  
-        //     wnd.ShowUtility();
-        //     wnd.Init();
-        //     return wnd;
-        // }
-         
         void OnEnable()
         {
             EditorApplication.update += OnEditorUpdate;
@@ -218,75 +272,6 @@ namespace Warkits.ToolBox.EasyProto
             return tex;
         }
 
-        async void StartDownload()
-        { 
-            confirmBtn.SetEnabled(false);
-
-            foreach (var job in m_DownloadJobs)
-            {
-                string zipPath = Path.Combine( job.targetPath, "temp.zip" );
-                try
-                {
-                    if (!Directory.Exists(job.targetPath))
-                        Directory.CreateDirectory(job.targetPath);
-                    bool success = false;
-                    foreach (var url in urls)
-                    {
-                        Debug.Log("Try: " + url);
-                        if (await Download(url, zipPath))
-                        {
-                            success = true;
-                            break;
-                        }
-                    }
-
-                    if (success)
-                    {
-                        //extract zip
-                        if (job.ExtractJob != null)
-                        {
-                            await job.ExtractJob( zipPath, job.targetPath );
-                        }
-                    }
-                    else 
-                    {
-                        Debug.LogError("All downloads failed");
-                        Close();
-                        return;
-                    }
-                }
-                catch (Exception e)
-                {
-                    Debug.LogError(e);
-                    Close(); 
-                }
-            }
-
-            // ExtractAllFromZip( zipPath, targetPath );
-            //     ApplyChmod(targetPath); 
-            //     File.Delete(zipPath); 
-            //     
-            //     success = false; 
-            //     zipPath = Path.Combine(libTargetPath, "temp.zip"); 
-            //     if (!Directory.Exists(libTargetPath))
-            //         Directory.CreateDirectory(libTargetPath);  
-            //     if (await Download(libUrl, zipPath))
-            //     {
-            //         success = true; 
-            //     } 
-            //     if (!success)
-            //     {
-            //         Debug.LogError("DotNet lib downloads failed");
-            //         Close(); 
-            //         return;
-            //     } 
-            //     ExtractNet2Only( zipPath, libTargetPath );  
-            //     File.Delete(zipPath);   
-            //     Debug.Log("All ProtoTools and library resources have been downloaded.");
-            //     Close(); 
-            //     
-            //     EasyProtoModule.ManualCompileAllProtos(); 
-        }
         private static string[] BuildUrlFallbacks(string originalUrl)
         {
             try
@@ -317,6 +302,42 @@ namespace Warkits.ToolBox.EasyProto
                 return new[] { originalUrl };
             }
         }
+        async void StartDownload()
+        { 
+            confirmBtn.SetEnabled(false);
+
+            foreach (var job in m_DownloadJobs)
+            {
+                string zipPath = Path.Combine( job.targetPath, "temp.zip" );
+                try
+                {
+                    if (!Directory.Exists(job.targetPath))
+                        Directory.CreateDirectory(job.targetPath); 
+                 
+                    if ( await Download( job.url, zipPath ))
+                    {
+                        if (job.ExtractJob != null)
+                        {
+                            await job.ExtractJob( zipPath, job.targetPath );
+                        }
+                    } 
+                    else
+                    {
+                        Debug.LogError("All downloads failed");
+                        Close();
+                        return;
+                    }
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError(e);
+                    Close(); 
+                }
+            }
+            Close();
+            EasyProtoModule.ManualCompileAllProtos();  
+        }
+
         async Task<bool> Download( string url_, string path )
         {
             string[] urls   = BuildUrlFallbacks(url_); 
@@ -356,78 +377,22 @@ namespace Warkits.ToolBox.EasyProto
             }
         }
         
-        void ExtractNet2Only( string zipPath, string targetPath)
-        {
-            using (ZipArchive archive = ZipFile.OpenRead(zipPath))
-            {
-                foreach (var entry in archive.Entries)
-                {
-                    string name = entry.FullName.Replace("\\", "/");
-
-                    if ( name == "lib/netstandard2.0/Google.Protobuf.dll")
-                    {
-                        string dest = Path.Combine( targetPath, "Google.Protobuf.dll" );
-                        entry.ExtractToFile(dest, true);
-                    }
-                }
-            }
-        }
         
-        void ExtractAllFromZip( string zipPath, string targetPath )
-        {  
-            using (ZipArchive archive = ZipFile.OpenRead(zipPath))
-            {
-                foreach (ZipArchiveEntry entry in archive.Entries)
-                {
-                    string entryFullName = entry.FullName.Replace('\\', '/'); 
-                    if ( entryFullName.EndsWith('/') )
-                        continue;  
-                    string destFilePath = Path.Combine(targetPath, entryFullName); 
-                    Directory.CreateDirectory( Path.GetDirectoryName( destFilePath ) );
-                    entry.ExtractToFile( destFilePath, overwrite: true );
-                }
-            } 
-        }
-
-        void ExtractProtocOnly(string zipPath, string targetPath)
-        {
-            using (ZipArchive archive = ZipFile.OpenRead(zipPath))
-            {
-                foreach (var entry in archive.Entries)
-                {
-                    string name = entry.FullName.Replace("\\", "/");
-
-                    if (name == "bin/protoc" || name == "bin/protoc.exe")
-                    {
-                        string dest = Path.Combine(targetPath, Path.GetFileName(name));
-                        entry.ExtractToFile(dest, true);
-                    }
-                }
-            }
-        }
-
-        void ApplyChmod(string path)
-        {
-#if UNITY_EDITOR_OSX || UNITY_EDITOR_LINUX
-        try
-        {
-            string exe = Path.Combine(path, "bin/protoc");
-            if (File.Exists(exe))
-            {
-                Process p = new Process();
-                p.StartInfo.FileName = "/bin/chmod";
-                p.StartInfo.Arguments = $"+x \"{exe}\"";
-                p.StartInfo.UseShellExecute = false;
-                p.StartInfo.CreateNoWindow = true;
-                p.Start();
-                p.WaitForExit();
-            }
-        }
-        catch (Exception e)
-        {
-            Debug.LogWarning(e);
-        }
-#endif
-        }
+        
+        // void ExtractAllFromZip( string zipPath, string targetPath )
+        // {  
+        //     using (ZipArchive archive = ZipFile.OpenRead(zipPath))
+        //     {
+        //         foreach (ZipArchiveEntry entry in archive.Entries)
+        //         {
+        //             string entryFullName = entry.FullName.Replace('\\', '/'); 
+        //             if ( entryFullName.EndsWith('/') )
+        //                 continue;  
+        //             string destFilePath = Path.Combine(targetPath, entryFullName); 
+        //             Directory.CreateDirectory( Path.GetDirectoryName( destFilePath ) );
+        //             entry.ExtractToFile( destFilePath, overwrite: true );
+        //         }
+        //     } 
+        // } 
     }
 }
