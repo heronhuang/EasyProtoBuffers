@@ -15,5 +15,8 @@
       "description": "Protobuf Serialization & Deserialization",
       "path": "Samples~/Samples"
     }
-  ]
+  ],
+  "dependencies": {
+    "com.unity.collections": "2.6.6"
+  }
 }
