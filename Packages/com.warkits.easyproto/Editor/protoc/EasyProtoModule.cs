@@ -27,17 +27,20 @@ namespace Warkits.ToolBox.EasyProto
             internal static string Plateform    => m_Platform;
             internal static string ProtocFilename => m_ProtocFilename;
             internal static string ProtocLaunchPath => m_ProtocLaunchPath;
-          
-            internal static void Init()
+
+            internal static void SetVersion(string ver)
             {
-                string projectRoot = Application.dataPath + "/../";
+                m_Version = ver;
+            }
+            internal static void Init()
+            { 
                 string currentPath = GetCurrentScriptPath();
-                currentPath        = projectRoot + Path.GetDirectoryName(currentPath);
-                string version_    = GetProtoVersion( Path.Combine( currentPath  , "../../Config" ) );
+                currentPath        = Path.GetDirectoryName( currentPath );
+                string version_    = GetProtoVersion( Path.Combine( currentPath  , "../../Config" ), "version.gconf" );
                 m_Version          = version_ ?? "34.1";
-                m_LibraryPath      = Path.Combine( currentPath    , "../../Runtime/Plugins");
+                m_LibraryPath      = Path.GetFullPath(Path.Combine( currentPath    , "../../Runtime/Plugins"));
                 m_Platform         = DetectPlatform();
-                string protocPath  = Path.Combine( currentPath    , ".protoc" );
+                string protocPath  = Path.GetFullPath(Path.Combine( currentPath    , ".protoc" ));
                 if (!Directory.Exists(protocPath))
                 {
                     Directory.CreateDirectory(protocPath);
@@ -58,12 +61,12 @@ namespace Warkits.ToolBox.EasyProto
         }
         //path without filename
         [CanBeNull]
-        static string GetProtoVersion( string folder )
+        static string GetProtoVersion( string folder,string versionFilename )
         {
-            string versionfile  = Path.Combine( folder, "version");
-            if (File.Exists(versionfile))
+            string versionFile  = Path.Combine( folder, versionFilename );
+            if ( File.Exists(versionFile) )
             {
-                foreach (var line in File.ReadLines(versionfile))
+                foreach (var line in File.ReadLines(versionFile))
                 {
                     var trimLine = line.Trim();
                     //skip commends and empty line
@@ -105,13 +108,13 @@ namespace Warkits.ToolBox.EasyProto
 
         static bool Protoc_NeedDownload()
         {
-            string curVersion  =  GetProtoVersion(Environment.ProtocPath);
+            string curVersion  =  GetProtoVersion(Environment.ProtocPath,"version.txt");
             return curVersion != Environment.Version; 
         }
 
         static bool Library_NeedDownload()
         {
-            string curVersion  = GetProtoVersion(Environment.LibraryPath);
+            string curVersion  = GetProtoVersion(Environment.LibraryPath,"version.txt");
             return curVersion != Environment.Version; 
         }
         
@@ -177,7 +180,7 @@ namespace Warkits.ToolBox.EasyProto
             } 
         }
 
-        private static string GetCurrentScriptPath()
+        public static string GetCurrentScriptPath()
         {
             var stackTrace = new System.Diagnostics.StackTrace(true);
             var frame      = stackTrace.GetFrame(0);

@@ -1,14 +1,13 @@
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
-using System.IO.Compression;
-using System.Threading.Tasks;
 using UnityEditor;
 using UnityEngine;
-using UnityEngine.Networking;
 using UnityEngine.UIElements;
-using UnityEngine.WSA;
+using UnityEngine.Networking;
+using System.IO;
+using System.IO.Compression;
+using System.Diagnostics;
+using System.Threading.Tasks;
+using System;
+using System.Collections.Generic;
 using Debug = UnityEngine.Debug;
 
 namespace Warkits.ToolBox.EasyProto
@@ -78,13 +77,6 @@ namespace Warkits.ToolBox.EasyProto
                 }
             }
         }
-
-        static void WriteVersion(string targetPath)
-        {
-            string versionfile = Path.Combine( targetPath, "version" ); 
-            File.WriteAllText( versionfile, EasyProtoModule.Environment.Version );
-        }
-
         public static void Fetch( string protocUrl, 
                                   string libUrl, 
                                   bool   downProtoc,
@@ -103,9 +95,7 @@ namespace Warkits.ToolBox.EasyProto
                         // 调用提取 protoc 的逻辑
                         await Task.Run(() => {
                         {
-                            ExtractAllFromZip(zipPath, targetPath); 
-                            File.Delete(zipPath);
-                            WriteVersion(targetPath);
+                            ExtractAllFromZip(zipPath, targetPath);
                         } });
                         ApplyChmod( targetPath+"/bin/protoc" );
                         return true;
@@ -123,9 +113,7 @@ namespace Warkits.ToolBox.EasyProto
                         // 调用提取库的逻辑
                         await Task.Run(() =>
                         {
-                            ExtractNet2Only( zipPath, targetPath );
-                            File.Delete(zipPath);
-                            WriteVersion(targetPath);
+                            ExtractNet2Only( zipPath, targetPath );   
                         });
                         return true;
                     }
@@ -152,7 +140,7 @@ namespace Warkits.ToolBox.EasyProto
         public static EasyFetchWindow Create(string title , in Vector2 minSize, in Vector2 maxSize)
         {
             EasyFetchWindow wnd   = CreateInstance<EasyFetchWindow>();
-            wnd.titleContent      = new GUIContent("Easy ProtoBuffer Downloader"); 
+            wnd.titleContent      = new GUIContent(title); 
             wnd.minSize           = minSize;
             wnd.maxSize           = maxSize;  
             return wnd;
@@ -162,7 +150,8 @@ namespace Warkits.ToolBox.EasyProto
         {
             m_DownloadJobs.Add(job);
         }
-        
+       
+         
         void OnEnable()
         {
             EditorApplication.update += OnEditorUpdate;
@@ -170,18 +159,16 @@ namespace Warkits.ToolBox.EasyProto
 
         private void OnDestroy()
         {
-            EditorApplication.update -= OnEditorUpdate;
-            
-            SessionState.SetBool("Fetching", false);
+            EditorApplication.update -= OnEditorUpdate; 
         }
 
         void OnEditorUpdate()
         { 
             Repaint();  
         } 
-        internal void UpdateContent()
+        internal void UpdateURL(string url)
         {
-            m_URLContent.text = m_DownloadJobs[0].url;
+            m_URLContent.text = $"URL:  {url}";
         }
         
         internal void ConstructUI()
@@ -191,7 +178,7 @@ namespace Warkits.ToolBox.EasyProto
             root.style.paddingLeft  = 12;
             root.style.paddingRight = 12;
             root.style.paddingTop   = 12; 
-            root.Add(new Label("Easy ProtoBuffer needs to download from Github/Nuget")
+            root.Add(new Label("Download <color=green>protoc</color> and <color=green>runtime</color> from official Github and Nuget link...")
             {
                 style =
                 {
@@ -200,11 +187,14 @@ namespace Warkits.ToolBox.EasyProto
                     marginBottom            = 4
                 }
             }); 
-            root.Add(new Label($"Platform: { EasyProtoModule.Environment.Plateform }"));
-            
-            m_URLContent = new Label($"Download URL")
+            root.Add(new Label($"Version: <color=yellow>{ EasyProtoModule.Environment.Version }</color>   Platform:  { EasyProtoModule.Environment.Plateform  }"));
+            VisualElement space = new VisualElement();
+            space.style.height = 20; 
+            space.style.flexShrink = 0; 
+            root.Add(space);
+            m_URLContent = new Label($"URL:  https://github.com/protocolbuffers/protobuf/releases")
             {
-                style = { fontSize = 10, marginBottom = 10 }
+                style = {  marginBottom = 10,unityFontStyleAndWeight = FontStyle.Bold, fontSize = 11}  
             }; 
             root.Add(m_URLContent); 
             var progressBg                   = new VisualElement();
@@ -312,8 +302,8 @@ namespace Warkits.ToolBox.EasyProto
                 try
                 {
                     if (!Directory.Exists(job.targetPath))
-                        Directory.CreateDirectory(job.targetPath); 
-                 
+                        Directory.CreateDirectory(job.targetPath);
+                    UpdateURL(job.url);
                     if ( await Download( job.url, zipPath ))
                     {
                         if (job.ExtractJob != null)
@@ -323,7 +313,7 @@ namespace Warkits.ToolBox.EasyProto
                     } 
                     else
                     {
-                        Debug.LogError("All downloads failed");
+                       Debug.LogError("All downloads failed");
                         Close();
                         return;
                     }
@@ -334,10 +324,33 @@ namespace Warkits.ToolBox.EasyProto
                     Close(); 
                 }
             }
-            Close();
-            EasyProtoModule.ManualCompileAllProtos();  
-        }
 
+            // ExtractAllFromZip( zipPath, targetPath );
+            //     ApplyChmod(targetPath); 
+            //     File.Delete(zipPath); 
+            //     
+            //     success = false; 
+            //     zipPath = Path.Combine(libTargetPath, "temp.zip"); 
+            //     if (!Directory.Exists(libTargetPath))
+            //         Directory.CreateDirectory(libTargetPath);  
+            //     if (await Download(libUrl, zipPath))
+            //     {
+            //         success = true; 
+            //     } 
+            //     if (!success)
+            //     {
+            //         Debug.LogError("DotNet lib downloads failed");
+            //         Close(); 
+            //         return;
+            //     } 
+            //     ExtractNet2Only( zipPath, libTargetPath );  
+            //     File.Delete(zipPath);   
+            //     Debug.Log("All ProtoTools and library resources have been downloaded.");
+            //     Close(); 
+            //     
+            //     EasyProtoModule.ManualCompileAllProtos(); 
+        }
+        
         async Task<bool> Download( string url_, string path )
         {
             string[] urls   = BuildUrlFallbacks(url_); 

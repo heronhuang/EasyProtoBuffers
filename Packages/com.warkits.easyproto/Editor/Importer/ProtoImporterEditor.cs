@@ -6,7 +6,7 @@ namespace Warkits.ToolBox.EasyProto
 {
     [CustomEditor(typeof(ProtoImporter))]
     [CanEditMultipleObjects]
-    public class SomeImporterEditor : ScriptedImporterEditor
+    public class ProtoImporterEditor : ScriptedImporterEditor
     {
         private string IncPath,TargetPath;
         public override void OnInspectorGUI()
