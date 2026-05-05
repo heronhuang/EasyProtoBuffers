@@ -46,7 +46,7 @@ namespace Warkits.ToolBox.EasyProto
 #if UNITY_EDITOR_OSX || UNITY_EDITOR_LINUX
         try
         { 
-            if (File.Exists(exe))
+            if (File.Exists(path))
             {
                 Process p = new Process();
                 p.StartInfo.FileName = "/bin/chmod";
