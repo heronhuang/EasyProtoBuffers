@@ -108,13 +108,13 @@ namespace Warkits.ToolBox.EasyProto
 
         static bool Protoc_NeedDownload()
         {
-            string curVersion  =  GetProtoVersion(Environment.ProtocPath,"version.txt");
+            string curVersion  =  GetProtoVersion(Environment.ProtocPath,".version.txt");
             return curVersion != Environment.Version; 
         }
 
         static bool Library_NeedDownload()
         {
-            string curVersion  = GetProtoVersion(Environment.LibraryPath,"version.txt");
+            string curVersion  = GetProtoVersion(Environment.LibraryPath,".version.txt");
             return curVersion != Environment.Version; 
         }
         

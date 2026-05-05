@@ -22,7 +22,7 @@ namespace Warkits.ToolBox.EasyProto
         } 
         static void WriteVersion(string targetPath)
         {
-            string versionfile = Path.Combine(targetPath, "version.txt");
+            string versionfile = Path.Combine(targetPath, ".version.txt");
             File.WriteAllText( versionfile, EasyProtoModule.Environment.Version );
         }
         public  static EasyFetchWindow m_Wnd; 
