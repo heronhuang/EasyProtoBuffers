@@ -161,12 +161,16 @@ namespace Warkits.ToolBox.EasyProto
          
         void OnEnable()
         {
+            EditorApplication.LockReloadAssemblies();  
+           
             EditorApplication.update += OnEditorUpdate;
         }
 
         private void OnDestroy()
         {
-            EditorApplication.update -= OnEditorUpdate; 
+            EditorApplication.update -= OnEditorUpdate;
+            EditorApplication.UnlockReloadAssemblies(); // 解锁编译
+            EditorUtility.RequestScriptReload();
         }
 
         void OnEditorUpdate()
